@@ -92,7 +92,6 @@ def loadData(dataset, data_dir, tfRecord=False):
         os.remove(output_file)
       except OSError:
         pass
-      # Convert to tf.train.Example and write the to TFRecords.
       convert_to_tfrecord(dataset, input_files, output_file)
   print('Done!')
 
@@ -102,7 +101,6 @@ def _parse_function(proto):
     keys_to_features = {'image': tf.FixedLenFeature([], tf.string),
                         "label": tf.FixedLenFeature([], tf.int64)}
 
-    # Load one example
     parsed_features = tf.parse_single_example(proto, keys_to_features)
 
     # Turn your saved image string into an array
@@ -113,26 +111,33 @@ def _parse_function(proto):
 
 
 def create_dataset(filepath, batch_size=128, shuffle_buffer=50000, num_classes=10):
-    # This works with arrays as well
     dataset = tf.data.TFRecordDataset(filepath)
     dataset = dataset.shuffle(shuffle_buffer).repeat()
-    # Maps the parser on every filepath in the array. You can set the number of parallel loaders here
     dataset = dataset.map(_parse_function)  # , num_parallel_calls=8)
-
-    # Set the number of datapoints you want to load and shuffle
-
-    # Set the batchsize
     dataset = dataset.batch(batch_size)
-
-    # Create an iterator
     iterator = dataset.make_one_shot_iterator()
-
-    # Create your tf representation of the iterator
     image, label = iterator.get_next()
-
-    # Bring your picture back in shape
     image = tf.reshape(image, [-1, 32, 32, 3])
-
-    # Create a one hot array for your labels
     label = tf.one_hot(label, num_classes)
     return image, label
+
+
+# using x_train, y_train
+def convert_to_tfrecord_data(x, y, output_file):
+    """Converts a file to TFRecords."""
+    print('Generating %s' % output_file)
+    with tf.python_io.TFRecordWriter(output_file) as record_writer:
+        labels = y
+        data = x
+        num_entries_in_batch = len(labels)
+        for i in range(num_entries_in_batch):
+            example = tf.train.Example(features=tf.train.Features(
+                feature={
+                    'image': _bytes_feature(data[i].tobytes()),
+                    'label': _int64_feature(labels[i])
+                }))
+            record_writer.write(example.SerializeToString())
+
+
+# convert_to_tfrecord_data(x_train, y_train, './train.tfrecord')
+# convert_to_tfrecord_data(x_test, y_test, './test.tfrecord')
