@@ -10,7 +10,7 @@ class Gallery:
         self.model = model
         self.num_classes = num_classes
         self.x = x
-        if len(y.shape) != 1:
+        if len(y.shape) > 1 and y.shape[1]!=1:
             y = y.argmax(axis=1)
         self.y = y
         self.size = size
